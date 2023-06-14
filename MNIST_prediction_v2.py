@@ -22,15 +22,6 @@ y_test = tf.keras.utils.to_categorical(y_test)
 # Set the number of nodes
 N = 100
 
-initial_model_weights = model.get_weights()
-
-zero_model_weights = np.zeros_like(initial_model_weights)
-
-local_model_weights = np.tile(initial_model_weights, (N, 1, 1))
-model_weights = np.tile(initial_model_weights, (N, 1, 1))
-
-batch_size = 600
-epochs = 10
 """
 # Determine the number of batches
 num_batches = int(len(X_train) / batch_size)
@@ -107,6 +98,16 @@ for i in range(len(agent_batches)):
 
     model[i].compile(optimizer='adam', loss='categorical_crossentropy',
                      metrics=['accuracy'])
+
+initial_model_weights = model.get_weights()
+
+zero_model_weights = np.zeros_like(initial_model_weights)
+
+local_model_weights = np.tile(initial_model_weights, (N, 1, 1))
+model_weights = np.tile(initial_model_weights, (N, 1, 1))
+
+batch_size = 600
+epochs = 10
 
 # Probability of being a one-way edge
 p = 0.5
