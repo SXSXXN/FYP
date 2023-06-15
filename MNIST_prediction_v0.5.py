@@ -73,6 +73,7 @@ for _ in range(100):  # Assuming 100 agents
     resolutions.append((resolution, resolution))
 
 model = []
+local_model_weights = []
 # Resize images for each agent
 resized_agent_data = []
 for i in range(len(agent_batches)):
@@ -91,7 +92,7 @@ for i in range(len(agent_batches)):
     # Define the neural network architecture
     model.append(tf.keras.models.Sequential([
         tf.keras.layers.Dense(128, activation='relu',
-                              input_shape=(resolution[0]*resolution[1])),
+                              input_shape=(resolution[0]*resolution[1],)),
         tf.keras.layers.Dropout(0.2),
         tf.keras.layers.Dense(10, activation='softmax')
     ]))
@@ -99,12 +100,8 @@ for i in range(len(agent_batches)):
     model[i].compile(optimizer='adam', loss='categorical_crossentropy',
                      metrics=['accuracy'])
 
-initial_model_weights = model.get_weights()
-
-zero_model_weights = np.zeros_like(initial_model_weights)
-
-local_model_weights = np.tile(initial_model_weights, (N, 1, 1))
-model_weights = np.tile(initial_model_weights, (N, 1, 1))
+    local_model_weights.append(model[i].get_weights())
+    model_weights = local_model_weights
 
 batch_size = 600
 epochs = 10
@@ -186,8 +183,20 @@ for t in range(T):
         for j in G.predecessors(i):
 
             if i not in malicious_nodes:  # benign agent (follows the strategy)
-                model.set_weights(local_model_weights[j, 0])
-                _, alpha[i, j] = model.evaluate(
+                weights_A = local_model_weights[i]
+                weights_B = local_model_weights[j]
+
+                # Check if the shapes of the weights are compatible
+                if weights_A[0].shape != weights_B[0].shape:
+                    # Resize the weights of Agent B to match the shape of Agent A's weights
+                    resized_weights_B = []
+                    for weight_A, weight_B in zip(weights_A, weights_B):
+                        resized_weight_B = np.resize(weight_B, weight_A.shape)
+                        resized_weights_B.append(resized_weight_B)
+                    weights_B = resized_weights_B
+
+                model[i].set_weights(weights_B)
+                _, alpha[i, j] = model[i].evaluate(
                     test_images_subset[i], test_labels_subset[i], verbose=0)
 
                 # Calculate aggregate trust value βij(t) for the link (j, i) at time t
@@ -248,22 +257,37 @@ for t in range(T):
    # Local training
     for i in range(N):
         if i not in malicious_nodes:
-            model.set_weights(model_weights[i, 0])
-            model.fit(resized_agent_data[i], agent_batches_labels[i],
-                      epochs=epochs, verbose=0)
-            local_model_weights[i] = model.get_weights()
+            model[i].set_weights(model_weights[i])
+            model[i].fit(resized_agent_data[i], agent_batches_labels[i],
+                         epochs=epochs, verbose=0)
+            local_model_weights[i] = model[i].get_weights()
             test_labels_subset[i] = tf.keras.utils.to_categorical(np.argmax(
-                model.predict(test_images_subset[i], verbose=0), axis=-1), num_classes=10)
+                model[i].predict(test_images_subset[i], verbose=0), axis=-1), num_classes=10)
         else:
             local_model_weights[i] = [np.random.normal(
-                size=w.shape) for w in model.get_weights()]
+                size=w.shape) for w in model[i].get_weights()]
 
     # Aggregation
     for i in range(N):
         if i not in malicious_nodes:
             for j in G_copy.predecessors(i):
-                local_model_weights[i] = local_model_weights[i] + \
-                    local_model_weights[j]
+                # benign agent (follows the strategy)
+                if i not in malicious_nodes:
+                    weights_A = local_model_weights[i]
+                    weights_B = local_model_weights[j]
+
+                    # Check if the shapes of the weights are compatible
+                    if weights_A[0].shape != weights_B[0].shape:
+                        # Resize the weights of Agent B to match the shape of Agent A's weights
+                        resized_weights_B = []
+                        for weight_A, weight_B in zip(weights_A, weights_B):
+                            resized_weight_B = np.resize(
+                                weight_B, weight_A.shape)
+                            resized_weights_B.append(resized_weight_B)
+                        weights_B = resized_weights_B
+
+                weights_A = weights_A + \
+                    weights_B
             if len(list(G_copy.predecessors(i))) > 0:
                 local_model_weights[i] = np.divide(
                     local_model_weights[i], (len(list(G_copy.predecessors(i)))+1))
@@ -275,8 +299,21 @@ for t in range(T):
 
     for i in range(N):
         if i not in malicious_nodes:
-            model.set_weights(local_model_weights[i, 0])
-            _, acc = model.evaluate(X_test, y_test, verbose=0)
+            model[i].set_weights(local_model_weights[i])
+            # resize testing images X_test
+            # Create an empty list to store the resized/reshaped images
+            resized_images = []
+
+            # Iterate over each image in 'X_test' and resize/reshape it
+            for image in X_test:
+                resized_image = np.resize(
+                    image, (local_model_weights[i][0].shape[0]))
+                resized_images.append(resized_image)
+
+            # Convert the list of resized/reshaped images into a numpy array
+            resized_images = np.array(resized_images)
+
+            _, acc = model[i].evaluate(resized_images, y_test, verbose=0)
             # average accuracy
             total_acc += acc
     total_acc /= (N-num_malicious)
