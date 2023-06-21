@@ -10,7 +10,7 @@ import adaption
 random.seed(3)
 
 # Set the number of nodes
-N = 100
+N = 500
 
 # Probability of being a one-way edge
 p = 0.5
@@ -44,7 +44,7 @@ for u, v in BA.edges():
 # G = nx.erdos_renyi_graph(N, p, directed=True)
 
 # Set the number of malicious agents to be 1.5x number of nodes and select their nodes
-num_malicious = 60
+num_malicious = 300
 malicious_nodes = random.sample(range(N), num_malicious)
 
 # Draw the graph with the malicious nodes highlighted
@@ -75,7 +75,7 @@ learning_rate = 0.01
 # initialize number of local updates
 n_iterations = 50
 
-T = 300  # number of time steps
+T = 50  # number of time steps
 
 
 beta = np.zeros((N, N))
@@ -230,7 +230,7 @@ print("Out-neighbors after:", list(G_copy.successors(node)))
 # plot error versus the number of iterations
 plt.plot(w_error_list, label="w_error")
 plt.plot(b_error_list, label="b_error")
-plt.title("Malicious nodes = 60")
+plt.title("Mean")
 plt.xlabel("Number of iterations")
 plt.ylabel("Error")
 # plt.yscale("log")  # set y-axis to log scale

@@ -61,9 +61,6 @@ for i in range(100):
     agent_batches.append((x_train_batches[i], y_train_batches[i]))
 
 """
-X_train = X_train[:30000]
-y_train = y_train[:30000]
-
 # Randomly select split points
 split_points = np.sort(np.random.choice(
     np.arange(len(X_train)), N-1, replace=False))
@@ -76,6 +73,9 @@ agent_batches = [X_train[split_points[i]:split_points[i+1]] for i in range(N)]
 agent_batches_labels = [
     y_train[split_points[i]:split_points[i+1]] for i in range(N)]
 
+test_batches = [X_test[split_points[i]:split_points[i+1]] for i in range(N)]
+test_batches_labels = [
+    y_test[split_points[i]:split_points[i+1]] for i in range(N)]
 
 # Probability of being a one-way edge
 p = 0.5
@@ -104,8 +104,6 @@ for u, v in BA.edges():
 num_malicious = 50
 malicious_nodes = random.sample(range(N), num_malicious)
 
-initially_benign_nodes = set(range(N)) - set(malicious_nodes)
-turn_malicious_nodes = []
 
 T = 50  # number of time steps
 
@@ -147,30 +145,8 @@ for node in G.nodes:
     test_images_subset[node] = np.array(test_images_subset[node])
     test_labels_subset[node] = np.array(test_labels_subset[node])
 
-
-p_malicious = 0.004
-
-# Define the forgetting factor alpha_decay
-beta_decay = 0.973
-
-# Initialize a dictionary to store the previous alpha values for each node
-previous_beta = np.zeros((N, N, T))
-
-t_m = []
-
 # Loop over time steps
 for t in range(T):
-
-    # copy the initially benign nodes
-    initially_benign_nodes_copy = initially_benign_nodes.copy()
-
-    if len(turn_malicious_nodes) < 1:
-        for node in initially_benign_nodes_copy:
-            if random.uniform(0, 1) < p_malicious:
-                turn_malicious_nodes.append(node)
-                initially_benign_nodes.remove(node)
-                malicious_nodes.append(node)
-                t_m.append(t)
 
     # Determine in-neighbors trust vector
     for i in range(N):
@@ -183,14 +159,7 @@ for t in range(T):
                     test_images_subset[i], test_labels_subset[i], verbose=0)
 
                 # Calculate aggregate trust value βij(t) for the link (j, i) at time t
-                beta[i, j] = alpha[i, j] - 0.5
-
-                # store the previous beta values for each node
-                previous_beta[i, j, t] = beta[i, j]
-
-                # calculate the sum the previous beta values with forgetting factor
-                beta[i, j] += np.sum(previous_beta[i, j, :t]
-                                     * beta_decay ** (t - np.arange(t)))
+                beta[i, j] += alpha[i, j] - 0.5
 
                 if beta[i, j] > 0:  # if q ∈ N_in and βij(t) ≥ 0
                     p[i, j] = 1
@@ -251,6 +220,8 @@ for t in range(T):
             model.fit(agent_batches[i], agent_batches_labels[i],
                       epochs=epochs, verbose=0)
             local_model_weights[i] = model.get_weights()
+            test_labels_subset[i] = tf.keras.utils.to_categorical(np.argmax(
+                model.predict(test_images_subset[i], verbose=0), axis=-1), num_classes=10)
         else:
             local_model_weights[i] = [np.random.normal(
                 size=w.shape) for w in model.get_weights()]
@@ -258,12 +229,12 @@ for t in range(T):
     # Aggregation
     for i in range(N):
         if i not in malicious_nodes:
-            for j in G_copy.predecessors(i):
+            for j in G.predecessors(i):
                 local_model_weights[i] = local_model_weights[i] + \
                     local_model_weights[j]
-            if len(list(G_copy.predecessors(i))) > 0:
+            if len(list(G.predecessors(i))) > 0:
                 local_model_weights[i] = np.divide(
-                    local_model_weights[i], (len(list(G_copy.predecessors(i)))+1))
+                    local_model_weights[i], (len(list(G.predecessors(i)))+1))
         else:
             local_model_weights[i] = local_model_weights[i]
 
@@ -282,8 +253,6 @@ for t in range(T):
 
     print("Accuracy:", total_acc)
 
-    print("time:", t_m)
-
     # Update the global model weights
     model_weights = local_model_weights
 
@@ -292,6 +261,6 @@ for t in range(T):
 plt.plot(accuracy)
 plt.xlabel("Number of iterations")
 plt.ylabel("Accuracy")
-plt.title("Time-Varying Trustworthiness")
+plt.title("Networks without link cuts")
 plt.grid(True)  # turn on grid
 plt.show()

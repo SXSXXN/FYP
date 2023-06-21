@@ -51,7 +51,7 @@ learning_rate = 0.01
 # initialize number of local updates
 n_iterations = 50
 
-T = 100  # number of time steps
+T = 50  # number of time steps
 
 
 beta = np.zeros((N, N))
@@ -205,10 +205,11 @@ print("Out-neighbors after:", list(G_copy.successors(node)))
 # plot error versus the number of iterations
 plt.plot(w_error_list, label="w_error")
 plt.plot(b_error_list, label="b_error")
-plt.title("erdos-renyi graph")
+plt.title("Erdős-Rényi Graph")
 plt.xlabel("Number of iterations")
 plt.ylabel("Error")
 plt.legend()
+plt.grid(True)  # turn on grid
 plt.show()
 
 

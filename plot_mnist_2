@@ -1,0 +1,36 @@
+import random
+import matplotlib.pyplot as plt
+from tensorflow.keras.datasets import mnist
+
+# Load the MNIST dataset
+(train_images, train_labels), (_, _) = mnist.load_data()
+
+# Select all occurrences of the digit 0 in the dataset
+digit = 0
+indices = [i for i, label in enumerate(train_labels) if label == digit]
+
+# Define the number of example digits to display
+num_examples = 8  # Change this value to display a different number of random digits
+
+# Select a random sequence of example digits
+random.seed(123)  # Set a seed for reproducibility
+random_indices = random.sample(indices, num_examples)
+
+# Create a grid of subplots for the example digits
+num_rows = (num_examples - 1) // 4 + 1
+fig, axs = plt.subplots(num_rows, 4, figsize=(10, 2))
+
+# Plot the example digits
+for i, index in enumerate(random_indices):
+    image = train_images[index]
+
+    # Plot the digit image in the appropriate subplot
+    axs[i // 4, i % 4].imshow(image, cmap='gray')
+    # axs[i // 4, i % 4].set_title(f"Digit {digit}")
+    axs[i // 4, i % 4].axis('off')
+
+# Adjust the spacing between subplots
+plt.subplots_adjust(wspace=0.05, hspace=0.05)
+
+# Show the graph
+plt.show()

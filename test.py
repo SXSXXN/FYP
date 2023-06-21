@@ -2,41 +2,56 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import random
 
-# Create a Barabási-Albert (BA) graph
-BA = nx.barabasi_albert_graph(n=20, m=2)
+# Set the number of nodes and edges
+N = 30
+num_edges_per_node = 5
 
-# Probability of being a one-way edge
-p = 0.5
+# Create an undirected Barabasi-Albert graph with 5 edges per node
+BA = nx.barabasi_albert_graph(N, num_edges_per_node)
 
-# create a directed graph with edges pointing in one direction
-ba_graph = nx.DiGraph()
+# Convert the graph to a directed graph
+G_before = nx.DiGraph(BA)
 
+# Create a directed graph for the modified version
+G_after = nx.DiGraph()
+
+# Randomly add malicious agents to the graph
+num_malicious = 15
+malicious_nodes = random.sample(range(N), num_malicious)
+
+# Iterate through the edges of the original graph and modify them in the new graph
 for u, v in BA.edges():
-    if random.random() < p:
-        # Randomly choose the direction of the edge
-        if random.random() < 0.5:
-            ba_graph.add_edges_from([(u, v)])
-        else:
-            ba_graph.add_edges_from([(v, u)])
+    if random.random() < 0.5:
+        G_after.add_edges_from([(u, v)])
     else:
-        # Keep the edge as a bidirectional edge
-        ba_graph.add_edge(u, v)
-        ba_graph.add_edge(v, u)
+        G_after.add_edges_from([(v, u)])
 
+# Set the positions of the nodes for visualization
+pos = nx.spring_layout(G_before)
 
-# Create an Erdős-Rényi (ER) graph
-er_graph = nx.erdos_renyi_graph(n=20, p=0.1, directed=True)
+# Create a figure with two subplots
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
 
-# Draw the Barabási-Albert graph
-plt.figure()
-nx.draw(ba_graph, with_labels=False, node_color='lightblue',
-        node_size=100, edge_color='gray', arrows=True)
-plt.title('Barabási-Albert (BA) Graph')
-plt.show()
+# Draw the graph before adding malicious agents
+nx.draw_networkx(G_after, pos, node_color='lightblue',
+                 edge_color='gray', arrows=True, ax=ax1, with_labels=False)
+# ax1.set_title("Graph Before Adding Malicious Agents")
 
-# Draw the Erdős-Rényi graph
-plt.figure()
-nx.draw(er_graph, with_labels=False, node_color='lightblue',
-        node_size=100, edge_color='gray', arrows=True)
-plt.title('Erdős-Rényi (ER) Graph')
+# Draw the graph after adding malicious agents
+node_colors = [
+    'red' if node in malicious_nodes else 'lightblue' for node in G_after.nodes]
+nx.draw_networkx(G_after, pos, node_color=node_colors,
+                 edge_color='gray', arrows=True, ax=ax2, with_labels=False)
+# ax2.set_title("Graph After Adding Malicious Agents")
+
+# Create a legend
+legend_labels = {'Benign Agents': 'lightblue', 'Malicious Agents': 'red'}
+legend_handles = [plt.Line2D([], [], marker='o', color='lightblue', linestyle='None', markersize=10),
+                  plt.Line2D([], [], marker='o', color='red', linestyle='None', markersize=10)]
+fig.legend(legend_handles, legend_labels, loc='upper center')
+
+# Adjust spacing between subplots
+plt.tight_layout()
+
+# Display the figure
 plt.show()

@@ -99,7 +99,7 @@ agents = range(N)  # Assuming agent IDs are integers from 0 to 99
 G.add_nodes_from(agents)
 
 # Set the number of malicious agents to be 1.5x number of nodes and select their nodes
-num_malicious = 50
+num_malicious = 60
 malicious_nodes = random.sample(range(N), num_malicious)
 
 T = 50  # number of time steps
@@ -152,6 +152,6 @@ for t in range(T):
 plt.plot(accuracy)
 plt.xlabel("Number of iterations")
 plt.ylabel("Accuracy")
-plt.title("MNIST Accuracy")
+plt.title("Single-agent isolated learning")
 plt.grid(True)  # turn on grid
 plt.show()
